@@ -11,6 +11,12 @@ pipeline {
             }
         }
 
+        stage('Check Maven') {
+            steps {
+                sh "mvn -version"
+            }
+        }
+
         stage('Checkout') {
             steps {
                 echo "Cloning repository..."
