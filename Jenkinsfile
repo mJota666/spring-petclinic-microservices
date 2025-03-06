@@ -1,4 +1,3 @@
-// Declare a global variable to store the detected service.
 def detectedService = "none"
 
 pipeline {
