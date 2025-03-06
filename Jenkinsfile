@@ -1,7 +1,7 @@
 pipeline {
     agent any
     environment {
-        SERVICE = "none"  // ✅ Default to "none" to avoid null issues
+        SERVICE = "none"
     }
     stages {
         stage('Detect Changes') {
@@ -25,65 +25,30 @@ pipeline {
                         echo "No relevant service was modified. Skipping pipeline."
                         env.SERVICE = "none"
                     }
-
                     echo "Service to build: ${env.SERVICE}"
                 }
             }
         }
 
-        // ✅ SKIP TEST STAGE IF NO SERVICE IS MODIFIED
-        stage('Test') {
+        stage('Test, Build & Deploy') {
             when {
-                allOf {
-                    expression { env.SERVICE != "none" }
-                    expression { env.SERVICE != "" }  // Ensure it's not empty
-                }
+                expression { env.SERVICE != "none" && env.SERVICE != "" }
             }
-            agent { label "${env.SERVICE}-agent" }
             steps {
+                // Use a scripted node block here so we only allocate an agent if needed.
                 script {
-                    echo "Running tests for ${env.SERVICE}"
-                    bat "cd ${env.SERVICE} && mvn test"
-                }
-            }
-            post {
-                always {
-                    junit "${env.SERVICE}/target/surefire-reports/*.xml"
-                }
-            }
-        }
+                    node("${env.SERVICE}-agent") {
+                        echo "Running tests for ${env.SERVICE}"
+                        bat "cd ${env.SERVICE} && mvn test"
+                        junit "${env.SERVICE}/target/surefire-reports/*.xml"
 
-        // ✅ SKIP BUILD STAGE IF NO SERVICE IS MODIFIED
-        stage('Build') {
-            when {
-                allOf {
-                    expression { env.SERVICE != "none" }
-                    expression { env.SERVICE != "" }
-                }
-            }
-            agent { label "${env.SERVICE}-agent" }
-            steps {
-                script {
-                    echo "Building ${env.SERVICE}"
-                    bat "cd ${env.SERVICE} && mvn package"
-                }
-            }
-        }
+                        echo "Building ${env.SERVICE}"
+                        bat "cd ${env.SERVICE} && mvn package"
 
-        // ✅ SKIP DEPLOY STAGE IF NO SERVICE IS MODIFIED
-        stage('Deploy') {
-            when {
-                allOf {
-                    expression { env.SERVICE != "none" }
-                    expression { env.SERVICE != "" }
-                }
-            }
-            agent { label "${env.SERVICE}-agent" }
-            steps {
-                script {
-                    echo "Deploying ${env.SERVICE}..."
-                    bat "docker build -t myrepo/${env.SERVICE}:latest ${env.SERVICE}"
-                    bat "docker push myrepo/${env.SERVICE}:latest"
+                        echo "Deploying ${env.SERVICE}..."
+                        bat "docker build -t myrepo/${env.SERVICE}:latest ${env.SERVICE}"
+                        bat "docker push myrepo/${env.SERVICE}:latest"
+                    }
                 }
             }
         }
