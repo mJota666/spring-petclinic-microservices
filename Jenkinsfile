@@ -7,7 +7,7 @@ pipeline {
         stage('Detect Changes') {
             steps {
                 script {
-                    // Run git diff and capture raw output.
+                    // Run git diff and capture the raw output.
                     def rawChangedFiles = bat(script: "git diff --name-only HEAD~1", returnStdout: true).trim()
                     echo "Raw Changed Files: [${rawChangedFiles}]"
                     
@@ -20,7 +20,7 @@ pipeline {
                     }
                     echo "Normalized Changed Files: ['${normalizedChangedFiles}']"
                     
-                    // Check which service folder is modified.
+                    // Check which service folder is modified without requiring a trailing slash.
                     if (normalizedChangedFiles.contains("Jenkinsfile")) {
                         echo "Jenkinsfile was updated. Skipping microservice build."
                         env.SERVICE = "none"
@@ -41,6 +41,7 @@ pipeline {
                 }
             }
         }
+
         stage('Test, Build & Deploy') {
             when {
                 expression { env.SERVICE != "none" && env.SERVICE != "" }
