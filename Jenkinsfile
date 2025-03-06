@@ -12,7 +12,7 @@ pipeline {
         stage('Deploy') {
             steps {
                 bat "echo Deploy project . . ."
-                bat "Deploy version: ${params.version}"
+                bat "Deploy version: ${params.VERSION}"
             }
         }
     }
