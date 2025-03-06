@@ -1,9 +1,18 @@
 pipeline {
     agent any
+    parameters {
+        choice(name: "VERSION", choices:['1.0', '2.0', '3.0'], description: "Deploy-version")
+    }
     stages {
         stage('Build') {
             steps {
-                bat "Echo Hello"
+                bat "echo Build project . . ."
+            }
+        }
+        stage('Deploy') {
+            steps {
+                bat "echo Deploy project . . ."
+                bat "Version ${params.version}}
             }
         }
     }
