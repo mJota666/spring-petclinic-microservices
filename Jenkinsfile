@@ -73,7 +73,7 @@ pipeline {
                             echo "Testing service ${svc} on agent: ${agentLabel}"
                             node(agentLabel) {
                                 checkout scm
-                                bat "cd ${svc} && mvnw.cmd test"
+                                bat "cd ${svc} && mvn test"
                                 junit "${svc}/target/surefire-reports/*.xml"
                             }
                         }
@@ -84,7 +84,7 @@ pipeline {
                         echo "Testing service ${svc} on agent: ${agentLabel}"
                         node(agentLabel) {
                             checkout scm
-                            bat "cd ${svc} && mvnw.cmd test"
+                            bat "cd ${svc} && mvn test"
                             junit "${svc}/target/surefire-reports/*.xml"
                         }
                     }
@@ -111,7 +111,7 @@ pipeline {
                             echo "Building service ${svc} on agent: ${agentLabel}"
                             node(agentLabel) {
                                 checkout scm
-                                bat "cd ${svc} && mvnw.cmd clean package -DskipTests"
+                                bat "cd ${svc} && mvn clean package -DskipTests"
                             }
                         }
                     } else {
@@ -121,7 +121,7 @@ pipeline {
                         echo "Building service ${svc} on agent: ${agentLabel}"
                         node(agentLabel) {
                             checkout scm
-                            bat "cd ${svc} && mvnw.cmd clean package -DskipTests"
+                            bat "cd ${svc} && mvn clean package -DskipTests"
                         }
                     }
                 }
