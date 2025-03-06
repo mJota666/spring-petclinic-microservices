@@ -70,8 +70,8 @@ pipeline {
                         bat "cd ${detectedService} && mvn package"
                         
                         echo "Deploying ${detectedService}..."
-                        bat "docker build -t myrepo/${detectedService}:latest ${detectedService}"
-                        bat "docker push myrepo/${detectedService}:latest"
+                        // bat "docker build -t myrepo/${detectedService}:latest ${detectedService}"
+                        // bat "docker push myrepo/${detectedService}:latest"
                     }
                 }
             }
