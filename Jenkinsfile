@@ -7,9 +7,15 @@ pipeline {
         stage('Detect Changes') {
             steps {
                 script {
-                    def changedFiles = bat(script: "git diff --name-only HEAD~1", returnStdout: true).trim()
-                    echo "Changed Files: ${changedFiles}"
+                    // Run git diff and get the raw output.
+                    def rawChangedFiles = bat(script: "git diff --name-only HEAD~1", returnStdout: true).trim()
+                    echo "Raw Changed Files: [${rawChangedFiles}]"
+                    
+                    // Normalize the output by removing any prompt lines and replacing newlines with spaces.
+                    def changedFiles = rawChangedFiles.replaceAll(/(?m)^.*> /, "").trim().replaceAll(/\r?\n/, " ")
+                    echo "Normalized Changed Files: [${changedFiles}]"
 
+                    // Check which service folder is modified.
                     if (changedFiles.contains("Jenkinsfile")) {
                         echo "Jenkinsfile was updated. Skipping microservice build."
                         env.SERVICE = "none"
@@ -25,18 +31,18 @@ pipeline {
                         echo "No relevant service was modified. Skipping pipeline."
                         env.SERVICE = "none"
                     }
+                    
                     echo "Service to build: ${env.SERVICE}"
                 }
             }
         }
-
         stage('Test, Build & Deploy') {
             when {
                 expression { env.SERVICE != "none" && env.SERVICE != "" }
             }
             steps {
                 script {
-                    // Strip the "spring-petclinic-" prefix from the service name.
+                    // Remove the "spring-petclinic-" prefix to derive the simple agent label.
                     def simpleName = env.SERVICE.replace("spring-petclinic-", "")
                     def agentLabel = "${simpleName}-agent"
                     echo "Using agent: ${agentLabel}"
@@ -45,10 +51,10 @@ pipeline {
                         echo "Running tests for ${env.SERVICE}"
                         bat "cd ${env.SERVICE} && mvn test"
                         junit "${env.SERVICE}/target/surefire-reports/*.xml"
-                        
+
                         echo "Building ${env.SERVICE}"
                         bat "cd ${env.SERVICE} && mvn package"
-                        
+
                         echo "Deploying ${env.SERVICE}..."
                         bat "docker build -t myrepo/${env.SERVICE}:latest ${env.SERVICE}"
                         bat "docker push myrepo/${env.SERVICE}:latest"
