@@ -1,37 +1,74 @@
+def detectedService = "none"
+
 pipeline {
     agent any
-    parameters {
-        choice(name: "VERSION", choices:['1.0', '2.0', '3.0'], description: "Deploy-version")
-        string(name: "VERSION_2", defaultValue: "1.0,2.0,3.0", description: "Deploy-version-2")
-    }
     stages {
-        stage('Init') {
+        stage('Detect Changes') {
             steps {
                 script {
-                    gv = load "script.groovy"
+                    // Run git diff and capture the raw output.
+                    def rawChangedFiles = bat(script: "git diff --name-only HEAD~1", returnStdout: true).trim()
+                    echo "Raw Changed Files: [${rawChangedFiles}]"
+                    
+                    // Split the raw output into lines.
+                    def lines = rawChangedFiles.split(/[\r\n]+/)
+                    // Find the first line that starts with "spring-petclinic-"
+                    def serviceLine = lines.find { it.trim().startsWith("spring-petclinic-") }
+                    def normalizedChangedFiles = serviceLine != null ? serviceLine.trim() : ""
+                    echo "Normalized Changed Files: [${normalizedChangedFiles}]"
+                    
+                    // Convert to lowercase for case-insensitive matching.
+                    def norm = normalizedChangedFiles.toLowerCase()
+                    echo "Lowercase Normalized: [${norm}]"
+                    
+                    // Use the global variable to capture the detected service.
+                    if (norm.contains("jenkinsfile")) {
+                        echo "Jenkinsfile was updated. Skipping microservice build."
+                        detectedService = "none"
+                    } else if (norm.contains("spring-petclinic-vets-service")) {
+                        echo "Detected vets service change."
+                        detectedService = "spring-petclinic-vets-service"
+                    } else if (norm.contains("spring-petclinic-customers-service")) {
+                        echo "Detected customers service change."
+                        detectedService = "spring-petclinic-customers-service"
+                    } else if (norm.contains("spring-petclinic-genai-service")) {
+                        echo "Detected genai service change."
+                        detectedService = "spring-petclinic-genai-service"
+                    } else if (norm.contains("spring-petclinic-visits-service")) {
+                        echo "Detected visits service change."
+                        detectedService = "spring-petclinic-visits-service"
+                    } else {
+                        echo "No relevant service was modified. Skipping pipeline."
+                        detectedService = "none"
+                    }
+                    
+                    echo "Detected service: ${detectedService}"
                 }
             }
         }
-        stage('Build') {
-            steps {
-                bat "echo Build project . . ."
+
+        stage('Test, Build & Deploy') {
+            when {
+                expression { detectedService != "none" && detectedService != "" }
             }
-        }
-        stage('Test') {
             steps {
                 script {
-                    gv.testApp()
-                }
-            }
-        }
-        stage('Deploy') {
-            steps {
-                script {
-                    bat "echo Deploy project . . ."
-                    // bat "echo Deploy version: ${params.VERSION}"
-                    def versions = params.VERSION_2.split(",")
-                    for (version in versions) {
-                        bat "echo deploy version ${version}"
+                    // Derive the agent label by stripping the "spring-petclinic-" prefix.
+                    def simpleName = detectedService.replace("spring-petclinic-", "")
+                    def agentLabel = "${simpleName}-agent"
+                    echo "Using agent: ${agentLabel}"
+                    
+                    node(agentLabel) {
+                        echo "Running tests for ${detectedService}"
+                        bat "cd ${detectedService} && mvn test"
+                        junit "${detectedService}/target/surefire-reports/*.xml"
+                        
+                        echo "Building ${detectedService}"
+                        bat "cd ${detectedService} && mvn package"
+                        
+                        echo "Deploying ${detectedService}..."
+                        bat "docker build -t myrepo/${detectedService}:latest ${detectedService}"
+                        bat "docker push myrepo/${detectedService}:latest"
                     }
                 }
             }
