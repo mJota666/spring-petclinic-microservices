@@ -1,7 +1,7 @@
 pipeline {
     agent any
     environment {
-        SERVICE = "none"  // ✅ Set default to prevent "null-agent" issue
+        SERVICE = "none"  // ✅ Default to "none" to avoid null issues
     }
     stages {
         stage('Detect Changes') {
@@ -31,9 +31,13 @@ pipeline {
             }
         }
 
+        // ✅ SKIP TEST STAGE IF NO SERVICE IS MODIFIED
         stage('Test') {
             when {
-                expression { env.SERVICE != "none" }
+                allOf {
+                    expression { env.SERVICE != "none" }
+                    expression { env.SERVICE != "" }  // Ensure it's not empty
+                }
             }
             agent { label "${env.SERVICE}-agent" }
             steps {
@@ -49,9 +53,13 @@ pipeline {
             }
         }
 
+        // ✅ SKIP BUILD STAGE IF NO SERVICE IS MODIFIED
         stage('Build') {
             when {
-                expression { env.SERVICE != "none" }
+                allOf {
+                    expression { env.SERVICE != "none" }
+                    expression { env.SERVICE != "" }
+                }
             }
             agent { label "${env.SERVICE}-agent" }
             steps {
@@ -62,9 +70,13 @@ pipeline {
             }
         }
 
+        // ✅ SKIP DEPLOY STAGE IF NO SERVICE IS MODIFIED
         stage('Deploy') {
             when {
-                expression { env.SERVICE != "none" }
+                allOf {
+                    expression { env.SERVICE != "none" }
+                    expression { env.SERVICE != "" }
+                }
             }
             agent { label "${env.SERVICE}-agent" }
             steps {
