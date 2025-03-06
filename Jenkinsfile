@@ -7,20 +7,20 @@ pipeline {
         stage('Detect Changes') {
             steps {
                 script {
-                    // Run git diff and capture raw output.
+                    // Run git diff and capture the raw output.
                     def rawChangedFiles = bat(script: "git diff --name-only HEAD~1", returnStdout: true).trim()
                     echo "Raw Changed Files: [${rawChangedFiles}]"
                     
-                    // Split output into lines.
+                    // Split the raw output into lines.
                     def lines = rawChangedFiles.split(/[\r\n]+/)
-                    // Filter lines that contain 'spring-petclinic-'
-                    def serviceLines = lines.findAll { it.contains("spring-petclinic-") }
-                    def normalizedChangedFiles = serviceLines.size() > 0 ? serviceLines[0].trim() : ""
+                    // Find the first line that starts with "spring-petclinic-"
+                    def serviceLine = lines.find { it.trim().startsWith("spring-petclinic-") }
+                    def normalizedChangedFiles = serviceLine != null ? serviceLine.trim() : ""
                     echo "Normalized Changed Files: [${normalizedChangedFiles}]"
                     
-                    // Determine the service based on the normalized file path.
+                    // Determine which service was modified.
                     if (normalizedChangedFiles == "") {
-                        echo "No relevant service file found. Skipping pipeline."
+                        echo "No service file changed, setting SERVICE to none."
                         env.SERVICE = "none"
                     } else if (normalizedChangedFiles.contains("Jenkinsfile")) {
                         echo "Jenkinsfile was updated. Skipping microservice build."
@@ -42,14 +42,14 @@ pipeline {
                 }
             }
         }
-
+        
         stage('Test, Build & Deploy') {
             when {
                 expression { env.SERVICE != "none" && env.SERVICE != "" }
             }
             steps {
                 script {
-                    // Derive the agent label by stripping "spring-petclinic-" prefix.
+                    // Remove the "spring-petclinic-" prefix to derive the agent label.
                     def simpleName = env.SERVICE.replace("spring-petclinic-", "")
                     def agentLabel = "${simpleName}-agent"
                     echo "Using agent: ${agentLabel}"
@@ -58,10 +58,10 @@ pipeline {
                         echo "Running tests for ${env.SERVICE}"
                         bat "cd ${env.SERVICE} && mvn test"
                         junit "${env.SERVICE}/target/surefire-reports/*.xml"
-
+                        
                         echo "Building ${env.SERVICE}"
                         bat "cd ${env.SERVICE} && mvn package"
-
+                        
                         echo "Deploying ${env.SERVICE}..."
                         bat "docker build -t myrepo/${env.SERVICE}:latest ${env.SERVICE}"
                         bat "docker push myrepo/${env.SERVICE}:latest"
