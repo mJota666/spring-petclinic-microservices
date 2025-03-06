@@ -35,16 +35,20 @@ pipeline {
                 expression { env.SERVICE != "none" && env.SERVICE != "" }
             }
             steps {
-                // Use a scripted node block here so we only allocate an agent if needed.
                 script {
-                    node("${env.SERVICE}-agent") {
+                    // Strip the "spring-petclinic-" prefix from the service name.
+                    def simpleName = env.SERVICE.replace("spring-petclinic-", "")
+                    def agentLabel = "${simpleName}-agent"
+                    echo "Using agent: ${agentLabel}"
+                    
+                    node(agentLabel) {
                         echo "Running tests for ${env.SERVICE}"
                         bat "cd ${env.SERVICE} && mvn test"
                         junit "${env.SERVICE}/target/surefire-reports/*.xml"
-
+                        
                         echo "Building ${env.SERVICE}"
                         bat "cd ${env.SERVICE} && mvn package"
-
+                        
                         echo "Deploying ${env.SERVICE}..."
                         bat "docker build -t myrepo/${env.SERVICE}:latest ${env.SERVICE}"
                         bat "docker push myrepo/${env.SERVICE}:latest"
