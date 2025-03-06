@@ -12,11 +12,13 @@ pipeline {
         }
         stage('Deploy') {
             steps {
-                bat "echo Deploy project . . ."
-                // bat "echo Deploy version: ${params.VERSION}"
-                def versions = params.VERSION_2.split(",")
-                for (version in versions) {
-                    bat "echo deploy version ${version}"
+                script {
+                    bat "echo Deploy project . . ."
+                    // bat "echo Deploy version: ${params.VERSION}"
+                    def versions = params.VERSION_2.split(",")
+                    for (version in versions) {
+                        bat "echo deploy version ${version}"
+                    }
                 }
             }
         }
