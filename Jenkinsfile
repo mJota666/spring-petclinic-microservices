@@ -67,9 +67,9 @@ pipeline {
                             echo "Testing service ${svc} on agent: ${agentLabel}"
                             node(agentLabel) {
                                 checkout scm
-                                // Run tests and generate a Jacoco report.
+                                // Run tests and then generate jacoco report using fully qualified goal.
                                 bat "cd ${svc} && mvn test"
-                                bat "cd ${svc} && mvn jacoco:report"
+                                bat "cd ${svc} && mvn org.jacoco:jacoco-maven-plugin:report"
                                 junit testResults: "${svc}/target/surefire-reports/*.xml", allowEmptyResults: true
                             }
                         }
@@ -81,13 +81,14 @@ pipeline {
                         node(agentLabel) {
                             checkout scm
                             bat "cd ${svc} && mvn test"
-                            bat "cd ${svc} && mvn jacoco:report"
+                            bat "cd ${svc} && mvn org.jacoco:jacoco-maven-plugin:report"
                             junit testResults: "${svc}/target/surefire-reports/*.xml", allowEmptyResults: true
                         }
                     }
                 }
             }
         }
+
         
         stage('Coverage Check') {
             when {
