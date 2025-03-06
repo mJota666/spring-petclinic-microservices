@@ -124,52 +124,52 @@ pipeline {
             }
         }
         
-         stage('Deploy') {
-            when {
-                expression { env.DETECTED_SERVICE != "none" && env.DETECTED_SERVICE != "" }
-            }
-            steps {
-                script {
-                    if (env.DETECTED_SERVICE == "all") {
-                        def services = [
-                            "spring-petclinic-vets-service",
-                            "spring-petclinic-customers-service",
-                            "spring-petclinic-genai-service",
-                            "spring-petclinic-visits-service"
-                        ]
-                        services.each { svc ->
-                            def simpleName = svc.replace("spring-petclinic-", "")
-                            def agentLabel = "${simpleName}-agent"
-                            echo "Deploying service ${svc} on agent: ${agentLabel}"
-                            node(agentLabel) {
-                                checkout scm
-                                // Stop container: use returnStatus so that the step doesn't fail.
-                                def stopStatus = bat(script: "docker stop ${svc} || echo 'No container to stop'", returnStatus: true)
-                                echo "docker stop exit status: ${stopStatus}"
-                                def rmStatus = bat(script: "docker rm ${svc} || echo 'No container to remove'", returnStatus: true)
-                                echo "docker rm exit status: ${rmStatus}"
-                                bat "docker build -t myrepo/${svc}:latest ${svc}"
-                                bat "docker run -d --name ${svc} -p 8080:8080 myrepo/${svc}:latest"
-                            }
-                        }
-                    } else {
-                        def svc = env.DETECTED_SERVICE
-                        def simpleName = svc.replace("spring-petclinic-", "")
-                        def agentLabel = "${simpleName}-agent"
-                        echo "Deploying service ${svc} on agent: ${agentLabel}"
-                        node(agentLabel) {
-                            checkout scm
-                            def stopStatus = bat(script: "docker stop ${svc} || echo 'No container to stop'", returnStatus: true)
-                            echo "docker stop exit status: ${stopStatus}"
-                            def rmStatus = bat(script: "docker rm ${svc} || echo 'No container to remove'", returnStatus: true)
-                            echo "docker rm exit status: ${rmStatus}"
-                            bat "docker build -t myrepo/${svc}:latest ${svc}"
-                            bat "docker run -d --name ${svc} -p 8080:8080 myrepo/${svc}:latest"
-                        }
-                    }
-                }
-            }
-        }
+        //  stage('Deploy') {
+        //     when {
+        //         expression { env.DETECTED_SERVICE != "none" && env.DETECTED_SERVICE != "" }
+        //     }
+        //     steps {
+        //         script {
+        //             if (env.DETECTED_SERVICE == "all") {
+        //                 def services = [
+        //                     "spring-petclinic-vets-service",
+        //                     "spring-petclinic-customers-service",
+        //                     "spring-petclinic-genai-service",
+        //                     "spring-petclinic-visits-service"
+        //                 ]
+        //                 services.each { svc ->
+        //                     def simpleName = svc.replace("spring-petclinic-", "")
+        //                     def agentLabel = "${simpleName}-agent"
+        //                     echo "Deploying service ${svc} on agent: ${agentLabel}"
+        //                     node(agentLabel) {
+        //                         checkout scm
+        //                         // Stop container: use returnStatus so that the step doesn't fail.
+        //                         def stopStatus = bat(script: "docker stop ${svc} || echo 'No container to stop'", returnStatus: true)
+        //                         echo "docker stop exit status: ${stopStatus}"
+        //                         def rmStatus = bat(script: "docker rm ${svc} || echo 'No container to remove'", returnStatus: true)
+        //                         echo "docker rm exit status: ${rmStatus}"
+        //                         bat "docker build -t myrepo/${svc}:latest ${svc}"
+        //                         bat "docker run -d --name ${svc} -p 8080:8080 myrepo/${svc}:latest"
+        //                     }
+        //                 }
+        //             } else {
+        //                 def svc = env.DETECTED_SERVICE
+        //                 def simpleName = svc.replace("spring-petclinic-", "")
+        //                 def agentLabel = "${simpleName}-agent"
+        //                 echo "Deploying service ${svc} on agent: ${agentLabel}"
+        //                 node(agentLabel) {
+        //                     checkout scm
+        //                     def stopStatus = bat(script: "docker stop ${svc} || echo 'No container to stop'", returnStatus: true)
+        //                     echo "docker stop exit status: ${stopStatus}"
+        //                     def rmStatus = bat(script: "docker rm ${svc} || echo 'No container to remove'", returnStatus: true)
+        //                     echo "docker rm exit status: ${rmStatus}"
+        //                     bat "docker build -t myrepo/${svc}:latest ${svc}"
+        //                     bat "docker run -d --name ${svc} -p 8080:8080 myrepo/${svc}:latest"
+        //                 }
+        //             }
+        //         }
+        //     }
+        // }
 
         
     }
