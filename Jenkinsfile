@@ -7,7 +7,7 @@ pipeline {
         stage('Detect Changes') {
             steps {
                 script {
-                    // Run git diff and capture the raw output.
+                    // Run git diff and capture raw output.
                     def rawChangedFiles = bat(script: "git diff --name-only HEAD~1", returnStdout: true).trim()
                     echo "Raw Changed Files: [${rawChangedFiles}]"
                     
@@ -18,20 +18,25 @@ pipeline {
                     def normalizedChangedFiles = serviceLine != null ? serviceLine.trim() : ""
                     echo "Normalized Changed Files: [${normalizedChangedFiles}]"
                     
-                    // Determine which service was modified.
-                    if (normalizedChangedFiles == "") {
-                        echo "No service file changed, setting SERVICE to none."
-                        env.SERVICE = "none"
-                    } else if (normalizedChangedFiles.contains("Jenkinsfile")) {
+                    // Convert to lowercase for case-insensitive matching.
+                    def norm = normalizedChangedFiles.toLowerCase()
+                    echo "Lowercase Normalized: [${norm}]"
+                    
+                    // Check which service folder is modified.
+                    if (norm.contains("jenkinsfile")) {
                         echo "Jenkinsfile was updated. Skipping microservice build."
                         env.SERVICE = "none"
-                    } else if (normalizedChangedFiles.contains("spring-petclinic-vets-service")) {
+                    } else if (norm.contains("spring-petclinic-vets-service")) {
+                        echo "Detected vets service change."
                         env.SERVICE = "spring-petclinic-vets-service"
-                    } else if (normalizedChangedFiles.contains("spring-petclinic-customers-service")) {
+                    } else if (norm.contains("spring-petclinic-customers-service")) {
+                        echo "Detected customers service change."
                         env.SERVICE = "spring-petclinic-customers-service"
-                    } else if (normalizedChangedFiles.contains("spring-petclinic-genai-service")) {
+                    } else if (norm.contains("spring-petclinic-genai-service")) {
+                        echo "Detected genai service change."
                         env.SERVICE = "spring-petclinic-genai-service"
-                    } else if (normalizedChangedFiles.contains("spring-petclinic-visits-service")) {
+                    } else if (norm.contains("spring-petclinic-visits-service")) {
+                        echo "Detected visits service change."
                         env.SERVICE = "spring-petclinic-visits-service"
                     } else {
                         echo "No relevant service was modified. Skipping pipeline."
@@ -49,7 +54,7 @@ pipeline {
             }
             steps {
                 script {
-                    // Remove the "spring-petclinic-" prefix to derive the agent label.
+                    // Strip the "spring-petclinic-" prefix to derive the simple agent label.
                     def simpleName = env.SERVICE.replace("spring-petclinic-", "")
                     def agentLabel = "${simpleName}-agent"
                     echo "Using agent: ${agentLabel}"
