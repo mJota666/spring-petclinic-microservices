@@ -3,34 +3,37 @@ pipeline {
     environment {
         SERVICE = ""
     }
+    stages {
         stage('Detect Changes') {
             steps {
                 script {
                     def changedFiles = bat(script: "git diff --name-only HEAD~1", returnStdout: true).trim()
                     echo "Changed Files: ${changedFiles}"
-        
+
                     if (changedFiles.contains("Jenkinsfile")) {
-                        echo "Jenkinsfile was updated. Continuing pipeline without a specific service."
+                        echo "Jenkinsfile was updated. Skipping microservice build."
                         env.SERVICE = "none"
-                    } else if (changedFiles.contains("vets-service/")) {
-                        env.SERVICE = "vets-service"
-                    } else if (changedFiles.contains("customers-service/")) {
-                        env.SERVICE = "customers-service"
-                    } else if (changedFiles.contains("genai-service/")) {
-                        env.SERVICE = "genai-service"
-                    } else if (changedFiles.contains("visits-service/")) {
-                        env.SERVICE = "visits-service"
+                    } else if (changedFiles.contains("spring-petclinic-vets-service/")) {
+                        env.SERVICE = "spring-petclinic-vets-service"
+                    } else if (changedFiles.contains("spring-petclinic-customers-service/")) {
+                        env.SERVICE = "spring-petclinic-customers-service"
+                    } else if (changedFiles.contains("spring-petclinic-genai-service/")) {
+                        env.SERVICE = "spring-petclinic-genai-service"
+                    } else if (changedFiles.contains("spring-petclinic-visits-service/")) {
+                        env.SERVICE = "spring-petclinic-visits-service"
                     } else {
                         error "No relevant service was modified."
                     }
-        
+
                     echo "Service to build: ${env.SERVICE}"
                 }
             }
         }
 
-
         stage('Test') {
+            when {
+                expression { env.SERVICE != "none" }
+            }
             agent { label "${env.SERVICE}-agent" }
             steps {
                 script {
@@ -46,6 +49,9 @@ pipeline {
         }
 
         stage('Build') {
+            when {
+                expression { env.SERVICE != "none" }
+            }
             agent { label "${env.SERVICE}-agent" }
             steps {
                 script {
@@ -56,6 +62,9 @@ pipeline {
         }
 
         stage('Deploy') {
+            when {
+                expression { env.SERVICE != "none" }
+            }
             agent { label "${env.SERVICE}-agent" }
             steps {
                 script {
