@@ -7,30 +7,30 @@ pipeline {
         stage('Detect Changes') {
             steps {
                 script {
-                    // Run git diff and capture the raw output.
-                    def rawChangedFiles = bat(script: 'git diff --name-only HEAD~1', returnStdout: true).trim()
+                    // Run git diff and capture raw output.
+                    def rawChangedFiles = bat(script: "git diff --name-only HEAD~1", returnStdout: true).trim()
                     echo "Raw Changed Files: [${rawChangedFiles}]"
                     
-                    // Use a regex to extract the first occurrence of a path starting with "spring-petclinic-"
+                    // Use a regex to extract the first file path starting with "spring-petclinic-"
                     def pattern = /spring-petclinic-[^\s]+/
                     def matcher = rawChangedFiles =~ pattern
                     def normalizedChangedFiles = ""
                     if (matcher.find()) {
-                        normalizedChangedFiles = matcher.group(0)
+                        normalizedChangedFiles = matcher.group(0).trim()
                     }
-                    echo "Normalized Changed Files: [${normalizedChangedFiles}]"
+                    echo "Normalized Changed Files: ['${normalizedChangedFiles}']"
                     
-                    // Determine which service folder was modified based on the normalized output.
+                    // Check which service folder is modified.
                     if (normalizedChangedFiles.contains("Jenkinsfile")) {
                         echo "Jenkinsfile was updated. Skipping microservice build."
                         env.SERVICE = "none"
-                    } else if (normalizedChangedFiles.contains("spring-petclinic-vets-service/")) {
+                    } else if (normalizedChangedFiles.contains("spring-petclinic-vets-service")) {
                         env.SERVICE = "spring-petclinic-vets-service"
-                    } else if (normalizedChangedFiles.contains("spring-petclinic-customers-service/")) {
+                    } else if (normalizedChangedFiles.contains("spring-petclinic-customers-service")) {
                         env.SERVICE = "spring-petclinic-customers-service"
-                    } else if (normalizedChangedFiles.contains("spring-petclinic-genai-service/")) {
+                    } else if (normalizedChangedFiles.contains("spring-petclinic-genai-service")) {
                         env.SERVICE = "spring-petclinic-genai-service"
-                    } else if (normalizedChangedFiles.contains("spring-petclinic-visits-service/")) {
+                    } else if (normalizedChangedFiles.contains("spring-petclinic-visits-service")) {
                         env.SERVICE = "spring-petclinic-visits-service"
                     } else {
                         echo "No relevant service was modified. Skipping pipeline."
@@ -41,7 +41,6 @@ pipeline {
                 }
             }
         }
-        
         stage('Test, Build & Deploy') {
             when {
                 expression { env.SERVICE != "none" && env.SERVICE != "" }
@@ -57,10 +56,10 @@ pipeline {
                         echo "Running tests for ${env.SERVICE}"
                         bat "cd ${env.SERVICE} && mvn test"
                         junit "${env.SERVICE}/target/surefire-reports/*.xml"
-
+                        
                         echo "Building ${env.SERVICE}"
                         bat "cd ${env.SERVICE} && mvn package"
-
+                        
                         echo "Deploying ${env.SERVICE}..."
                         bat "docker build -t myrepo/${env.SERVICE}:latest ${env.SERVICE}"
                         bat "docker push myrepo/${env.SERVICE}:latest"
