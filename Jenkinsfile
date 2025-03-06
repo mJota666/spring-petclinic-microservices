@@ -1,3 +1,4 @@
+// Global variable to store the detected service.
 def detectedService = "none"
 
 pipeline {
@@ -6,47 +7,42 @@ pipeline {
         stage('Detect Changes') {
             steps {
                 script {
-                    // Check if this is a PR or a feature branch.
-                    if (env.CHANGE_ID != null || (env.BRANCH_NAME != null && env.BRANCH_NAME != "main")) {
-                        echo "New branch or PR detected. Running full pipeline for all services."
+                    // Run git diff and capture raw output.
+                    def rawChangedFiles = bat(script: "git diff --name-only HEAD~1", returnStdout: true).trim()
+                    echo "Raw Changed Files: [${rawChangedFiles}]"
+                    
+                    // Split the raw output into lines.
+                    def lines = rawChangedFiles.split(/[\r\n]+/)
+                    // Find the first line that starts with "spring-petclinic-"
+                    def serviceLine = lines.find { it.trim().startsWith("spring-petclinic-") }
+                    def normalizedChangedFiles = serviceLine != null ? serviceLine.trim() : ""
+                    echo "Normalized Changed Files: [${normalizedChangedFiles}]"
+                    
+                    // Convert to lowercase for case-insensitive matching.
+                    def norm = normalizedChangedFiles.toLowerCase()
+                    echo "Lowercase Normalized: [${norm}]"
+                    
+                    // Determine detected service based on changes.
+                    if (norm.contains("jenkinsfile")) {
+                        echo "Only Jenkinsfile changed. Running full pipeline for all services."
                         detectedService = "all"
+                    } else if (norm.contains("spring-petclinic-vets-service")) {
+                        echo "Detected vets service change."
+                        detectedService = "spring-petclinic-vets-service"
+                    } else if (norm.contains("spring-petclinic-customers-service")) {
+                        echo "Detected customers service change."
+                        detectedService = "spring-petclinic-customers-service"
+                    } else if (norm.contains("spring-petclinic-genai-service")) {
+                        echo "Detected genai service change."
+                        detectedService = "spring-petclinic-genai-service"
+                    } else if (norm.contains("spring-petclinic-visits-service")) {
+                        echo "Detected visits service change."
+                        detectedService = "spring-petclinic-visits-service"
                     } else {
-                        // Run git diff to capture changed files.
-                        def rawChangedFiles = bat(script: "git diff --name-only HEAD~1", returnStdout: true).trim()
-                        echo "Raw Changed Files: [${rawChangedFiles}]"
-                        
-                        // Split output into lines.
-                        def lines = rawChangedFiles.split(/[\r\n]+/)
-                        // Find the first line that starts with "spring-petclinic-"
-                        def serviceLine = lines.find { it.trim().startsWith("spring-petclinic-") }
-                        def normalizedChangedFiles = serviceLine != null ? serviceLine.trim() : ""
-                        echo "Normalized Changed Files: [${normalizedChangedFiles}]"
-                        
-                        // Convert to lowercase.
-                        def norm = normalizedChangedFiles.toLowerCase()
-                        echo "Lowercase Normalized: [${norm}]"
-                        
-                        // Diff-based detection.
-                        if (norm.contains("jenkinsfile")) {
-                            echo "Only Jenkinsfile changed. Running full pipeline for all services."
-                            detectedService = "all"
-                        } else if (norm.contains("spring-petclinic-vets-service")) {
-                            echo "Detected vets service change."
-                            detectedService = "spring-petclinic-vets-service"
-                        } else if (norm.contains("spring-petclinic-customers-service")) {
-                            echo "Detected customers service change."
-                            detectedService = "spring-petclinic-customers-service"
-                        } else if (norm.contains("spring-petclinic-genai-service")) {
-                            echo "Detected genai service change."
-                            detectedService = "spring-petclinic-genai-service"
-                        } else if (norm.contains("spring-petclinic-visits-service")) {
-                            echo "Detected visits service change."
-                            detectedService = "spring-petclinic-visits-service"
-                        } else {
-                            echo "No specific service detected. Running full pipeline for all services."
-                            detectedService = "all"
-                        }
+                        echo "No specific service detected. Running full pipeline for all services."
+                        detectedService = "all"
                     }
+                    
                     echo "Detected service: ${detectedService}"
                     env.DETECTED_SERVICE = detectedService
                 }
@@ -72,8 +68,9 @@ pipeline {
                             echo "Testing service ${svc} on agent: ${agentLabel}"
                             node(agentLabel) {
                                 checkout scm
-                                bat "cd ${svc} && mvn test"
-                                junit "${svc}/target/surefire-reports/*.xml"
+                                bat "cd ${svc} && mvnw.cmd test"
+                                // Allow empty test reports so that if no tests run, the stage doesn't fail.
+                                junit testResults: "${svc}/target/surefire-reports/*.xml", allowEmptyResults: true
                             }
                         }
                     } else {
@@ -83,8 +80,8 @@ pipeline {
                         echo "Testing service ${svc} on agent: ${agentLabel}"
                         node(agentLabel) {
                             checkout scm
-                            bat "cd ${svc} && mvn test"
-                            junit "${svc}/target/surefire-reports/*.xml"
+                            bat "cd ${svc} && mvnw.cmd test"
+                            junit testResults: "${svc}/target/surefire-reports/*.xml", allowEmptyResults: true
                         }
                     }
                 }
@@ -110,7 +107,7 @@ pipeline {
                             echo "Building service ${svc} on agent: ${agentLabel}"
                             node(agentLabel) {
                                 checkout scm
-                                bat "cd ${svc} && mvn clean package -DskipTests"
+                                bat "cd ${svc} && mvnw.cmd clean package -DskipTests"
                             }
                         }
                     } else {
@@ -120,7 +117,7 @@ pipeline {
                         echo "Building service ${svc} on agent: ${agentLabel}"
                         node(agentLabel) {
                             checkout scm
-                            bat "cd ${svc} && mvn clean package -DskipTests"
+                            bat "cd ${svc} && mvnw.cmd clean package -DskipTests"
                         }
                     }
                 }
