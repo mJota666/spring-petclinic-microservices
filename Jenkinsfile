@@ -1,4 +1,4 @@
-// Global variable to store the detected service.
+// Declare a global variable to store the detected service.
 def detectedService = "none"
 
 pipeline {
@@ -11,7 +11,7 @@ pipeline {
                     def rawChangedFiles = bat(script: "git diff --name-only HEAD~1", returnStdout: true).trim()
                     echo "Raw Changed Files: [${rawChangedFiles}]"
                     
-                    // Split the raw output into lines.
+                    // Split the output into lines.
                     def lines = rawChangedFiles.split(/[\r\n]+/)
                     // Find the first line that starts with "spring-petclinic-"
                     def serviceLine = lines.find { it.trim().startsWith("spring-petclinic-") }
@@ -22,7 +22,7 @@ pipeline {
                     def norm = normalizedChangedFiles.toLowerCase()
                     echo "Lowercase Normalized: [${norm}]"
                     
-                    // Determine detected service based on changes.
+                    // Use diff-based detection to set the service.
                     if (norm.contains("jenkinsfile")) {
                         echo "Only Jenkinsfile changed. Running full pipeline for all services."
                         detectedService = "all"
@@ -42,7 +42,6 @@ pipeline {
                         echo "No specific service detected. Running full pipeline for all services."
                         detectedService = "all"
                     }
-                    
                     echo "Detected service: ${detectedService}"
                     env.DETECTED_SERVICE = detectedService
                 }
@@ -68,8 +67,9 @@ pipeline {
                             echo "Testing service ${svc} on agent: ${agentLabel}"
                             node(agentLabel) {
                                 checkout scm
+                                // Run tests and generate a Jacoco report.
                                 bat "cd ${svc} && mvn test"
-                                // Allow empty test reports so that if no tests run, the stage doesn't fail.
+                                bat "cd ${svc} && mvn jacoco:report"
                                 junit testResults: "${svc}/target/surefire-reports/*.xml", allowEmptyResults: true
                             }
                         }
@@ -81,7 +81,68 @@ pipeline {
                         node(agentLabel) {
                             checkout scm
                             bat "cd ${svc} && mvn test"
+                            bat "cd ${svc} && mvn jacoco:report"
                             junit testResults: "${svc}/target/surefire-reports/*.xml", allowEmptyResults: true
+                        }
+                    }
+                }
+            }
+        }
+        
+        stage('Coverage Check') {
+            when {
+                expression { env.DETECTED_SERVICE != "none" && env.DETECTED_SERVICE != "" }
+            }
+            steps {
+                script {
+                    // Function to check coverage percentage from jacoco.xml
+                    def checkCoverage = { svc ->
+                        def jacocoFile = "${svc}/target/site/jacoco/jacoco.xml"
+                        echo "Checking coverage in file: ${jacocoFile}"
+                        def xmlContent = readFile file: jacocoFile
+                        // Regex to extract the 'LINE' counter
+                        def matcher = xmlContent =~ /<counter type="LINE" missed="(\d+)" covered="(\d+)"\s*\/>/
+                        if (matcher.find()) {
+                            int missed = matcher.group(1) as int
+                            int covered = matcher.group(2) as int
+                            int total = missed + covered
+                            def coverage = (covered / total) * 100
+                            echo "Coverage for ${svc}: ${coverage}%"
+                            if (coverage < 70) {
+                                error "Coverage for ${svc} is below threshold: ${coverage}%, required 70%."
+                            }
+                        } else {
+                            error "Coverage data not found in ${jacocoFile}"
+                        }
+                    }
+                    
+                    if (env.DETECTED_SERVICE == "all") {
+                        def services = [
+                            "spring-petclinic-vets-service",
+                            "spring-petclinic-customers-service",
+                            "spring-petclinic-genai-service",
+                            "spring-petclinic-visits-service"
+                        ]
+                        services.each { svc ->
+                            def simpleName = svc.replace("spring-petclinic-", "")
+                            def agentLabel = "${simpleName}-agent"
+                            echo "Checking coverage for service ${svc} on agent: ${agentLabel}"
+                            node(agentLabel) {
+                                checkout scm
+                                // Ensure the jacoco report is generated.
+                                bat "cd ${svc} && mvn jacoco:report"
+                                checkCoverage(svc)
+                            }
+                        }
+                    } else {
+                        def svc = env.DETECTED_SERVICE
+                        def simpleName = svc.replace("spring-petclinic-", "")
+                        def agentLabel = "${simpleName}-agent"
+                        echo "Checking coverage for service ${svc} on agent: ${agentLabel}"
+                        node(agentLabel) {
+                            checkout scm
+                            bat "cd ${svc} && mvn jacoco:report"
+                            checkCoverage(svc)
                         }
                     }
                 }
@@ -124,7 +185,7 @@ pipeline {
             }
         }
         
-        //  stage('Deploy') {
+        // stage('Deploy') {
         //     when {
         //         expression { env.DETECTED_SERVICE != "none" && env.DETECTED_SERVICE != "" }
         //     }
@@ -143,11 +204,8 @@ pipeline {
         //                     echo "Deploying service ${svc} on agent: ${agentLabel}"
         //                     node(agentLabel) {
         //                         checkout scm
-        //                         // Stop container: use returnStatus so that the step doesn't fail.
-        //                         def stopStatus = bat(script: "docker stop ${svc} || echo 'No container to stop'", returnStatus: true)
-        //                         echo "docker stop exit status: ${stopStatus}"
-        //                         def rmStatus = bat(script: "docker rm ${svc} || echo 'No container to remove'", returnStatus: true)
-        //                         echo "docker rm exit status: ${rmStatus}"
+        //                         bat "docker stop ${svc} || echo 'No container to stop'", returnStatus: true
+        //                         bat "docker rm ${svc} || echo 'No container to remove'", returnStatus: true
         //                         bat "docker build -t myrepo/${svc}:latest ${svc}"
         //                         bat "docker run -d --name ${svc} -p 8080:8080 myrepo/${svc}:latest"
         //                     }
@@ -159,10 +217,8 @@ pipeline {
         //                 echo "Deploying service ${svc} on agent: ${agentLabel}"
         //                 node(agentLabel) {
         //                     checkout scm
-        //                     def stopStatus = bat(script: "docker stop ${svc} || echo 'No container to stop'", returnStatus: true)
-        //                     echo "docker stop exit status: ${stopStatus}"
-        //                     def rmStatus = bat(script: "docker rm ${svc} || echo 'No container to remove'", returnStatus: true)
-        //                     echo "docker rm exit status: ${rmStatus}"
+        //                     bat "docker stop ${svc} || echo 'No container to stop'", returnStatus: true
+        //                     bat "docker rm ${svc} || echo 'No container to remove'", returnStatus: true
         //                     bat "docker build -t myrepo/${svc}:latest ${svc}"
         //                     bat "docker run -d --name ${svc} -p 8080:8080 myrepo/${svc}:latest"
         //                 }
@@ -170,7 +226,5 @@ pipeline {
         //         }
         //     }
         // }
-
-        
     }
 }
