@@ -53,12 +53,15 @@ pipeline {
             }
             steps {
                 script {
-                    // Derive the agent label by stripping the "spring-petclinic-" prefix.
+                    // Derive the agent label by stripping "spring-petclinic-" prefix.
                     def simpleName = detectedService.replace("spring-petclinic-", "")
                     def agentLabel = "${simpleName}-agent"
                     echo "Using agent: ${agentLabel}"
                     
                     node(agentLabel) {
+                        // Checkout the repository on the agent's workspace.
+                        checkout scm
+                        
                         echo "Running tests for ${detectedService}"
                         bat "cd ${detectedService} && mvn test"
                         junit "${detectedService}/target/surefire-reports/*.xml"
@@ -73,5 +76,5 @@ pipeline {
                 }
             }
         }
-    }
+
 }
