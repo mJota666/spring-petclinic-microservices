@@ -3,14 +3,16 @@ pipeline {
     environment {
         SERVICE = ""
     }
-    stages {
         stage('Detect Changes') {
             steps {
                 script {
                     def changedFiles = bat(script: "git diff --name-only HEAD~1", returnStdout: true).trim()
                     echo "Changed Files: ${changedFiles}"
-
-                    if (changedFiles.contains("vets-service/")) {
+        
+                    if (changedFiles.contains("Jenkinsfile")) {
+                        echo "Jenkinsfile was updated. Continuing pipeline without a specific service."
+                        env.SERVICE = "none"
+                    } else if (changedFiles.contains("vets-service/")) {
                         env.SERVICE = "vets-service"
                     } else if (changedFiles.contains("customers-service/")) {
                         env.SERVICE = "customers-service"
@@ -21,11 +23,12 @@ pipeline {
                     } else {
                         error "No relevant service was modified."
                     }
-
+        
                     echo "Service to build: ${env.SERVICE}"
                 }
             }
         }
+
 
         stage('Test') {
             agent { label "${env.SERVICE}-agent" }
