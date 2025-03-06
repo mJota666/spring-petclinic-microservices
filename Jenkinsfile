@@ -5,9 +5,23 @@ pipeline {
         string(name: "VERSION_2", defaultValue: "1.0,2.0,3.0", description: "Deploy-version-2")
     }
     stages {
+        stage('Init') {
+            steps {
+                script {
+                    gv = load "script.groovy"
+                }
+            }
+        }
         stage('Build') {
             steps {
                 bat "echo Build project . . ."
+            }
+        }
+        stage('Test') {
+            steps {
+                script {
+                    gv.testApp()
+                }
             }
         }
         stage('Deploy') {
