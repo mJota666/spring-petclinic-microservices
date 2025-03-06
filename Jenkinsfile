@@ -1,7 +1,7 @@
 pipeline {
     agent any
     environment {
-        SERVICE = ""
+        SERVICE = "none"
     }
     stages {
         stage('Detect Changes') {
