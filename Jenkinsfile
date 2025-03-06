@@ -68,7 +68,7 @@ pipeline {
                             echo "Testing service ${svc} on agent: ${agentLabel}"
                             node(agentLabel) {
                                 checkout scm
-                                bat "cd ${svc} && mvnw.cmd test"
+                                bat "cd ${svc} && mvn test"
                                 // Allow empty test reports so that if no tests run, the stage doesn't fail.
                                 junit testResults: "${svc}/target/surefire-reports/*.xml", allowEmptyResults: true
                             }
@@ -80,7 +80,7 @@ pipeline {
                         echo "Testing service ${svc} on agent: ${agentLabel}"
                         node(agentLabel) {
                             checkout scm
-                            bat "cd ${svc} && mvnw.cmd test"
+                            bat "cd ${svc} && mvn test"
                             junit testResults: "${svc}/target/surefire-reports/*.xml", allowEmptyResults: true
                         }
                     }
@@ -107,7 +107,7 @@ pipeline {
                             echo "Building service ${svc} on agent: ${agentLabel}"
                             node(agentLabel) {
                                 checkout scm
-                                bat "cd ${svc} && mvnw.cmd clean package -DskipTests"
+                                bat "cd ${svc} && mvn clean package -DskipTests"
                             }
                         }
                     } else {
@@ -117,7 +117,7 @@ pipeline {
                         echo "Building service ${svc} on agent: ${agentLabel}"
                         node(agentLabel) {
                             checkout scm
-                            bat "cd ${svc} && mvnw.cmd clean package -DskipTests"
+                            bat "cd ${svc} && mvn clean package -DskipTests"
                         }
                     }
                 }
