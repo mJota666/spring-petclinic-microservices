@@ -124,7 +124,7 @@ pipeline {
             }
         }
         
-        stage('Deploy') {
+         stage('Deploy') {
             when {
                 expression { env.DETECTED_SERVICE != "none" && env.DETECTED_SERVICE != "" }
             }
@@ -143,8 +143,11 @@ pipeline {
                             echo "Deploying service ${svc} on agent: ${agentLabel}"
                             node(agentLabel) {
                                 checkout scm
-                                bat "docker stop ${svc} || echo 'No container to stop'"
-                                bat "docker rm ${svc} || echo 'No container to remove'"
+                                // Stop container: use returnStatus so that the step doesn't fail.
+                                def stopStatus = bat(script: "docker stop ${svc} || echo 'No container to stop'", returnStatus: true)
+                                echo "docker stop exit status: ${stopStatus}"
+                                def rmStatus = bat(script: "docker rm ${svc} || echo 'No container to remove'", returnStatus: true)
+                                echo "docker rm exit status: ${rmStatus}"
                                 bat "docker build -t myrepo/${svc}:latest ${svc}"
                                 bat "docker run -d --name ${svc} -p 8080:8080 myrepo/${svc}:latest"
                             }
@@ -156,8 +159,10 @@ pipeline {
                         echo "Deploying service ${svc} on agent: ${agentLabel}"
                         node(agentLabel) {
                             checkout scm
-                            bat "docker stop ${svc} || echo 'No container to stop'"
-                            bat "docker rm ${svc} || echo 'No container to remove'"
+                            def stopStatus = bat(script: "docker stop ${svc} || echo 'No container to stop'", returnStatus: true)
+                            echo "docker stop exit status: ${stopStatus}"
+                            def rmStatus = bat(script: "docker rm ${svc} || echo 'No container to remove'", returnStatus: true)
+                            echo "docker rm exit status: ${rmStatus}"
                             bat "docker build -t myrepo/${svc}:latest ${svc}"
                             bat "docker run -d --name ${svc} -p 8080:8080 myrepo/${svc}:latest"
                         }
@@ -165,5 +170,7 @@ pipeline {
                 }
             }
         }
+
+        
     }
 }
