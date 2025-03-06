@@ -1,7 +1,7 @@
 pipeline {
     agent any
     environment {
-        SERVICE = "none"
+        SERVICE = "none"  // ✅ Set default to prevent "null-agent" issue
     }
     stages {
         stage('Detect Changes') {
@@ -22,7 +22,8 @@ pipeline {
                     } else if (changedFiles.contains("spring-petclinic-visits-service/")) {
                         env.SERVICE = "spring-petclinic-visits-service"
                     } else {
-                        error "No relevant service was modified."
+                        echo "No relevant service was modified. Skipping pipeline."
+                        env.SERVICE = "none"
                     }
 
                     echo "Service to build: ${env.SERVICE}"
