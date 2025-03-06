@@ -131,7 +131,7 @@ pipeline {
                             node(agentLabel) {
                                 checkout scm
                                 // Ensure the jacoco report is generated.
-                                bat "cd ${svc} && mvn jacoco:report"
+                                bat "cd ${svc} && mvn org.jacoco:jacoco-maven-plugin:report"
                                 checkCoverage(svc)
                             }
                         }
@@ -142,7 +142,7 @@ pipeline {
                         echo "Checking coverage for service ${svc} on agent: ${agentLabel}"
                         node(agentLabel) {
                             checkout scm
-                            bat "cd ${svc} && mvn jacoco:report"
+                            bat "cd ${svc} && mvn org.jacoco:jacoco-maven-plugin:report"
                             checkCoverage(svc)
                         }
                     }
