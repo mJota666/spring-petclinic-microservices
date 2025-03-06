@@ -59,4 +59,14 @@ pipeline {
                         junit "${env.SERVICE}/target/surefire-reports/*.xml"
 
                         echo "Building ${env.SERVICE}"
-          
+                        bat "cd ${env.SERVICE} && mvn package"
+
+                        echo "Deploying ${env.SERVICE}..."
+                        bat "docker build -t myrepo/${env.SERVICE}:latest ${env.SERVICE}"
+                        bat "docker push myrepo/${env.SERVICE}:latest"
+                    }
+                }
+            }
+        }
+    }
+}
